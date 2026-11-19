@@ -74,3 +74,60 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: APP_VERSION=${{ github.sha }}
+
+  deploiement:
+    name: Déploiement sur AKS
+    needs: [qualite, image]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    concurrency:
+      group: deploiement-aks
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Installer kubectl
+        run: |
+          curl -fsSL -o /tmp/kubectl \
+            "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          sudo install -o root -g root -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+          kubectl version --client
+
+      - name: Configurer l'accès au cluster
+        env:
+          KUBECONFIG_CONTENU: ${{ secrets.KUBECONFIG }}
+        run: |
+          mkdir -p ~/.kube
+          printf '%s\n' "$KUBECONFIG_CONTENU" > ~/.kube/config
+          chmod 600 ~/.kube/config
+          kubectl auth can-i create deployments
+
+      - name: Déployer sur AKS
+        run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}:sha-${GITHUB_SHA::7}"
+          echo "Déploiement de $IMAGE"
+
+          sed -i -E "s|^([[:space:]]*image:).*|\1 ${IMAGE}|" k8s/deployment.yaml
+
+          kubectl apply -f k8s/
+          kubectl rollout status deployment/mon-app --timeout=180s
+
+      - name: Test post-déploiement
+        run: |
+          kubectl port-forward svc/mon-app 18081:80 > /tmp/portforward.log 2>&1 &
+          PF_PID=$!
+          trap 'kill "$PF_PID" 2>/dev/null || true' EXIT
+
+          curl --fail --silent --show-error \
+            --retry 15 --retry-delay 2 --retry-all-errors \
+            http://127.0.0.1:18081/health
+
+          RESPONSE=$(curl --fail --silent --show-error \
+            --retry 10 --retry-delay 2 --retry-all-errors \
+            http://127.0.0.1:18081/)
+
+          echo "$RESPONSE" | jq -e \
+            --arg expected "$GITHUB_SHA" \
+            '.version == $expected'
