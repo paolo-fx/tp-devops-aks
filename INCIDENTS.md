@@ -36,3 +36,25 @@
 - **Cause racine :** Régression introduite volontairement dans la logique métier.
 - **Correction appliquée :** Annulation du commit défectueux avec `git revert`, suivie d'un nouveau push.
 - **Comment l'éviter à l'avenir :** Conserver les tests automatisés dans le pipeline et exiger leur réussite avant toute fusion dans `main`.
+
+## Incident n°5 — Dépassement mémoire des Pods Kubernetes
+
+- **Partie / étape :** Partie 4.2 — Déploiement Kubernetes sur AKS.
+- **Symptôme observé :** Les deux Pods restent à `0/1 Ready`, avec des états `OOMKilled` et `CrashLoopBackOff`.
+- **Diagnostic :** Consultation des Pods, de leurs événements et du quota avec `kubectl get pods -w`, `kubectl describe pods`, `kubectl get events` et `kubectl describe resourcequota`.
+- **Cause probable :** La limite de mémoire de 32 MiB est insuffisante pour exécuter l'application Flask avec deux workers Gunicorn.
+- **Correction appliquée :** Augmentation de `requests.memory` de 16 MiB à 64 MiB et de `limits.memory` de 32 MiB à 128 MiB, sans modifier les valeurs CPU.
+- **Justification :** Le namespace dispose d'un quota de 2 GiB de mémoire en limites. Deux Pods à 128 MiB utilisent au maximum 256 MiB selon leurs limites déclarées.
+- **Vérification :** À compléter après le nouveau déploiement.
+- **Prévention :** Mesurer la consommation mémoire et définir des ressources adaptées avant la mise en production.
+
+## Incident n°6 — Mise à jour Kubernetes défectueuse et rollback
+
+- **Partie / étape :** Partie 4.7 — Mise à jour et retour arrière.
+- **Symptôme observé :** Un nouveau Pod reste en `ImagePullBackOff` après une tentative de mise à jour.
+- **Diagnostic :** Les commandes `kubectl get pods` et `kubectl rollout history deployment/mon-app` montrent qu'une nouvelle révision utilise une image inexistante.
+- **Cause racine :** Utilisation volontaire du tag Docker `n-existe-pas`, qui n'existe pas dans GHCR.
+- **Impact :** Les deux anciens Pods sont restés opérationnels pendant l'échec de la mise à jour.
+- **Correction appliquée :** Exécution de `kubectl rollout undo deployment/mon-app` pour revenir à la révision précédente.
+- **Résultat :** Le rollback a réussi et le Pod défectueux est passé en cours de suppression.
+- **Prévention :** Vérifier l'existence des images avant déploiement et utiliser des tags SHA précis. Conserver les sondes de disponibilité et la stratégie RollingUpdate.
