@@ -1,6 +1,6 @@
 # TP DevOps AKS
 
-Description : API Flask de démonstration
+Description : API Flask de démonstration déployée sur Azure AKS
 
 ## Lancer l'application en local
 
