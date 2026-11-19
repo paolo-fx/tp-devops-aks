@@ -27,3 +27,12 @@
 - **Cause probable :** Les premières requêtes ont été effectuées avant que l'application soit entièrement prête.
 - **Correction appliquée :** Nouvelle vérification HTTP avec `curl --retry 10 --retry-delay 2 --retry-all-errors`, qui confirme le bon fonctionnement.
 - **Comment l'éviter à l'avenir :** Ajouter un contrôle de disponibilité (healthcheck) et attendre que l'application soit prête avant de lancer les tests HTTP.
+
+## Incident n°4 — Régression détectée par le pipeline CI
+
+- **Partie / étape :** Partie 3.3 — Test volontaire d'échec de la CI.
+- **Symptôme observé :** Le job `Qualité et tests` échoue après le commit `fix: simplification`.
+- **Diagnostic :** La modification de la fonction `est_bissextile` supprime la règle de divisibilité par 400, ce qui provoque l'échec des tests correspondant aux années 1600 et 2000.
+- **Cause racine :** Régression introduite volontairement dans la logique métier.
+- **Correction appliquée :** Annulation du commit défectueux avec `git revert`, suivie d'un nouveau push.
+- **Comment l'éviter à l'avenir :** Conserver les tests automatisés dans le pipeline et exiger leur réussite avant toute fusion dans `main`.
