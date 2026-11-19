@@ -29,3 +29,10 @@ def test_health(client):
 
 def test_ready(client):
     assert client.get("/ready").status_code == 200
+
+
+@pytest.mark.parametrize("annee,expected", [(2024, True), (2000, True), (1900, False)])
+def test_route_bissextile(client, annee, expected):
+    response = client.get(f"/bissextile/{annee}")
+    assert response.status_code == 200
+    assert response.get_json() == {"annee": annee, "bissextile": expected}
