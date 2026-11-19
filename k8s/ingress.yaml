@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mon-app
+spec:
+  ingressClassName: contour
+  rules:
+    - host: paolo.10.0.64.55.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mon-app
+                port:
+                  name: http
