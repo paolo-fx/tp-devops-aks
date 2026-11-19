@@ -3,4 +3,4 @@ kind: ConfigMap
 metadata:
   name: mon-app-config
 data:
-  MESSAGE: "Bonjour Paolo - Nouvelle configuration AKS !"
+  MESSAGE: "Deploiement automatique V2 reussi !"
